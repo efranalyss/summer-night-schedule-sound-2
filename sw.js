@@ -30,8 +30,8 @@ self.addEventListener('push', e => {
   const data = e.data ? e.data.json() : {};
   self.registration.showNotification(data.title || '✦ Schedule', {
     body: data.body || '',
-    icon: 'https://em-content.zobj.net/source/apple/354/crystal-ball_1f52e.png',
-    badge: 'https://em-content.zobj.net/source/apple/354/crystal-ball_1f52e.png',
+    icon: 'clock.png',
+    badge: 'clock.png',
     vibrate: [200, 100, 200]
   });
 });
