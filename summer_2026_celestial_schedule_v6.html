@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#D4AF37">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="My Schedule">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="https://em-content.zobj.net/source/apple/354/crystal-ball_1f52e.png">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Raleway:wght@300;400;500;600&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0d0618; font-family: 'Raleway', sans-serif; color: #e8d5ff; min-height: 100vh; overflow-x: hidden; }
+  .starfield { position: fixed; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+  .star { position: absolute; border-radius: 50%; background: white; animation: twinkle var(--d, 3s) ease-in-out infinite var(--delay, 0s); }
+  @keyframes twinkle { 0%, 100% { opacity: 0.2; transform: scale(1); } 50% { opacity: 1; transform: scale(1.4); } }
+  .butterfly { position: fixed; font-size: 20px; pointer-events: none; z-index: 1; animation: flutter var(--fd, 8s) ease-in-out infinite var(--fdelay, 0s); opacity: 0.4; }
+  @keyframes flutter {
+    0% { transform: translate(0,0) rotate(-10deg); } 25% { transform: translate(30px,-20px) rotate(10deg); }
+    50% { transform: translate(10px,-40px) rotate(-5deg); } 75% { transform: translate(-20px,-20px) rotate(15deg); }
+    100% { transform: translate(0,0) rotate(-10deg); }
+  }
+  .container { position: relative; z-index: 2; max-width: 800px; margin: 0 auto; padding: 2rem 1rem 4rem; }
+  .header { text-align: center; margin-bottom: 2.5rem; }
+  .header-gem { font-size: 2.5rem; margin-bottom: 0.5rem; animation: float 4s ease-in-out infinite; }
+  @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+  .header h1 {
+    font-family: 'Cinzel', serif; font-size: 1.7rem; font-weight: 700;
+    background: linear-gradient(135deg, #f0c060, #d4a0ff, #f0c060); background-size: 200% auto;
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    animation: shimmer 4s linear infinite; letter-spacing: 0.05em;
+  }
+  @keyframes shimmer { 0% { background-position: 0% center; } 100% { background-position: 200% center; } }
+  .header .subtitle { font-size: 0.8rem; color: #a080c8; letter-spacing: 0.2em; text-transform: uppercase; margin-top: 0.4rem; }
+  .clock { display: inline-block; background: rgba(212,160,255,0.1); border: 1px solid rgba(212,160,255,0.3); border-radius: 50px; padding: 0.4rem 1.2rem; font-family: 'Cinzel', serif; font-size: 1rem; color: #f0c060; letter-spacing: 0.1em; margin-top: 0.8rem; }
+  .controls-row { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .tab-row { display: flex; gap: 0.5rem; }
+  .tab-btn { font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 0.1em; padding: 0.5rem 1.5rem; border-radius: 50px; border: 1px solid rgba(212,160,255,0.4); background: rgba(212,160,255,0.05); color: #a080c8; cursor: pointer; transition: all 0.3s; }
+  .tab-btn.active { background: linear-gradient(135deg, rgba(240,192,96,0.2), rgba(212,160,255,0.2)); border-color: #f0c060; color: #f0c060; }
+  .schedule-list { display: flex; flex-direction: column; gap: 0.75rem; }
+  .task-card { border-radius: 16px; border: 1px solid rgba(212,160,255,0.15); background: rgba(255,255,255,0.03); padding: 1rem 1.2rem; transition: all 0.4s ease; position: relative; overflow: hidden; }
+  .task-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: linear-gradient(to bottom, #f0c060, #d4a0ff); opacity: 0; transition: opacity 0.4s; border-radius: 3px 0 0 3px; }
+  .task-card.active { border-color: rgba(240,192,96,0.6); background: linear-gradient(135deg, rgba(240,192,96,0.08), rgba(212,160,255,0.1)); box-shadow: 0 0 30px rgba(212,160,255,0.15), inset 0 0 30px rgba(240,192,96,0.03); }
+  .task-card.active::before { opacity: 1; }
+  .task-card.done { opacity: 0.4; }
+  .task-card.sleep-card { border-color: rgba(100,80,180,0.3); background: rgba(60,30,100,0.15); }
+  .task-card.sleep-card.active { border-color: rgba(160,120,255,0.6); background: linear-gradient(135deg, rgba(80,40,160,0.15), rgba(40,20,80,0.2)); box-shadow: 0 0 30px rgba(100,60,200,0.2); }
+  .task-top { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
+  .task-gem { font-size: 1.2rem; flex-shrink: 0; }
+  .task-info { flex: 1; min-width: 0; }
+  .task-name { font-family: 'Raleway', sans-serif; font-weight: 600; font-size: 0.9rem; color: #e8d5ff; line-height: 1.3; }
+  .task-card.active .task-name { color: #f0c060; }
+  .task-card.sleep-card .task-name { color: #b090e0; }
+  .task-card.sleep-card.active .task-name { color: #c8a8ff; }
+  .sleep-badge { display: inline-block; font-size: 0.62rem; letter-spacing: 0.08em; color: #7050b0; background: rgba(100,60,180,0.15); border: 1px solid rgba(100,60,180,0.3); border-radius: 20px; padding: 0.15rem 0.5rem; margin-left: 0.4rem; vertical-align: middle; font-family: 'Cinzel', serif; }
+  .task-time { font-size: 0.72rem; color: #7a5a9a; margin-top: 0.2rem; letter-spacing: 0.05em; }
+  .active-badge { display: none; font-family: 'Cinzel', serif; font-size: 0.6rem; letter-spacing: 0.1em; background: linear-gradient(135deg, #f0c060, #d4a0ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; border: 1px solid rgba(240,192,96,0.4); border-radius: 20px; padding: 0.2rem 0.6rem; flex-shrink: 0; animation: pulse-badge 2s ease-in-out infinite; white-space: nowrap; }
+  @keyframes pulse-badge { 0%, 100% { border-color: rgba(240,192,96,0.4); } 50% { border-color: rgba(240,192,96,0.9); } }
+  .task-card.active .active-badge { display: block; }
+  .progress-wrap { display: flex; align-items: center; gap: 0.75rem; margin-top: 0.4rem; }
+  .progress-track { flex: 1; height: 5px; background: rgba(212,160,255,0.1); border-radius: 10px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 10px; background: linear-gradient(to right, #f0c060, #d4a0ff); transition: width 1s linear; position: relative; }
+  .task-card.sleep-card .progress-fill { background: linear-gradient(to right, #6040b0, #a070e0); }
+  .progress-fill::after { content: ''; position: absolute; right: 0; top: 50%; transform: translateY(-50%); width: 8px; height: 8px; background: #f0e0ff; border-radius: 50%; box-shadow: 0 0 6px rgba(240,192,96,0.8); }
+  .progress-fill.full::after { display: none; }
+  .progress-text { font-size: 0.72rem; color: #a080c8; min-width: 70px; text-align: right; font-variant-numeric: tabular-nums; }
+  .task-card.active .progress-text { color: #f0c060; }
+  .task-card.sleep-card.active .progress-text { color: #c8a8ff; }
+  .motivation { font-size: 0.75rem; color: #5a3a7a; margin-top: 0.6rem; font-style: italic; line-height: 1.5; padding: 0.5rem 0.75rem; border-left: 2px solid rgba(212,160,255,0.15); border-radius: 0 8px 8px 0; background: rgba(212,160,255,0.04); }
+  .task-card.active .motivation { color: #c0a0e8; border-left-color: rgba(240,192,96,0.5); background: rgba(240,192,96,0.04); }
+  .task-card.sleep-card .motivation { border-left-color: rgba(100,60,180,0.2); }
+  .task-card.sleep-card.active .motivation { color: #b090d8; border-left-color: rgba(140,100,220,0.4); background: rgba(80,40,140,0.08); }
+
+  .alarm-banner {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 999;
+    background: linear-gradient(135deg, #1a0a2e, #2a1040);
+    border-bottom: 1px solid rgba(240,192,96,0.6);
+    padding: 1rem 1.5rem;
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    transform: translateY(-100%); transition: transform 0.5s cubic-bezier(0.34,1.2,0.64,1);
+    box-shadow: 0 4px 40px rgba(212,160,255,0.2);
+  }
+  .alarm-banner.visible { transform: translateY(0); }
+  .alarm-left { display: flex; align-items: center; gap: 0.75rem; }
+  .alarm-icon { font-size: 1.4rem; animation: ring 0.5s ease-in-out infinite alternate; }
+  @keyframes ring { 0% { transform: rotate(-15deg); } 100% { transform: rotate(15deg); } }
+  .alarm-text { font-family: 'Cinzel', serif; }
+  .alarm-title { font-size: 0.8rem; color: #f0c060; letter-spacing: 0.08em; }
+  .alarm-task { font-size: 0.7rem; color: #a080c8; margin-top: 0.2rem; letter-spacing: 0.05em; }
+  .alarm-dismiss { font-family: 'Cinzel', serif; font-size: 0.7rem; letter-spacing: 0.1em; padding: 0.5rem 1.2rem; border-radius: 50px; border: 1px solid rgba(240,192,96,0.6); background: rgba(240,192,96,0.1); color: #f0c060; cursor: pointer; transition: all 0.2s; white-space: nowrap; flex-shrink: 0; animation: pulse-btn 1.5s ease-in-out infinite; }
+  @keyframes pulse-btn { 0%, 100% { background: rgba(240,192,96,0.1); } 50% { background: rgba(240,192,96,0.25); } }
+  .alarm-dismiss:hover { background: rgba(240,192,96,0.3); }
+
+@media (max-width: 768px) {
+  .container { padding: 1.2rem 0.75rem 3rem; }
+  .header-gem { font-size: 2rem; }
+  .header h1 { font-size: 1.3rem; }
+  .header .subtitle { font-size: 0.7rem; letter-spacing: 0.15em; }
+  .clock { font-size: 0.85rem; padding: 0.35rem 1rem; }
+  .tab-btn { font-size: 0.7rem; padding: 0.45rem 1.1rem; letter-spacing: 0.06em; }
+  .task-card { padding: 0.85rem 1rem; border-radius: 14px; }
+  .task-name { font-size: 0.82rem; }
+  .task-time { font-size: 0.68rem; }
+  .motivation { font-size: 0.7rem; padding: 0.4rem 0.65rem; }
+  .active-badge { font-size: 0.55rem; padding: 0.15rem 0.5rem; }
+  .progress-text { font-size: 0.68rem; min-width: 60px; }
+  .alarm-banner { padding: 0.75rem 1rem; flex-wrap: wrap; gap: 0.6rem; }
+  .alarm-title { font-size: 0.75rem; }
+  .alarm-task { font-size: 0.65rem; }
+  .alarm-dismiss { font-size: 0.65rem; padding: 0.4rem 1rem; }
+}
+
+@media (max-width: 768px) and (orientation: landscape) {
+  .container { padding: 0.75rem 1rem 2rem; }
+  .header { margin-bottom: 1.2rem; }
+  .header-gem { font-size: 1.5rem; margin-bottom: 0.3rem; }
+  .header h1 { font-size: 1.1rem; }
+  .header .subtitle { display: none; }
+  .clock { font-size: 0.8rem; margin-top: 0.4rem; }
+  .controls-row { margin-bottom: 0.8rem; }
+  .schedule-list { gap: 0.5rem; }
+  .task-card { padding: 0.65rem 0.9rem; }
+  .task-name { font-size: 0.78rem; }
+  .motivation { font-size: 0.67rem; margin-top: 0.4rem; }
+}
+
+@media (max-width: 480px) {
+  .header h1 { font-size: 1.1rem; }
+  .tab-btn { font-size: 0.65rem; padding: 0.4rem 0.9rem; }
+  .task-gem { font-size: 1rem; }
+  .task-name { font-size: 0.78rem; }
+  .active-badge { display: none; }
+  .alarm-banner { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+  .alarm-dismiss { width: 100%; text-align: center; }
+}
+</style>
+</head>
+<body>
+
+<div class="alarm-banner" id="alarm-banner">
+  <div class="alarm-left">
+    <div class="alarm-icon">🔔</div>
+    <div class="alarm-text">
+      <div class="alarm-title">✦ Task Complete!</div>
+      <div class="alarm-task" id="alarm-task-name">—</div>
+    </div>
+  </div>
+  <button class="alarm-dismiss" onclick="dismissAlarm()">✦ Got it, dismiss</button>
+</div>
+
+<div class="starfield" id="starfield"></div>
+
+<div class="container">
+  <div class="header">
+    <div class="header-gem">🔮</div>
+    <h1>Summer 2026 Schedule</h1>
+    <div class="subtitle">✦ your celestial journey ✦</div>
+    <div class="clock" id="clock">--:-- --</div>
+  </div>
+  <div class="controls-row">
+    <div class="tab-row">
+      <button class="tab-btn active" id="btn-weekday" onclick="switchTab('weekday')">✦ Weekday</button>
+      <button class="tab-btn" id="btn-weekend" onclick="switchTab('weekend')">✦ Weekend</button>
+    </div>
+  </div>
+  <div class="schedule-list" id="schedule-list"></div>
+</div>
+
+<script>
+// Weekday: starts 5:30 PM, sleep 2:30 AM – 11:30 AM (9 hrs)
+const weekdayTasks = [
+  { name: "Wake Up Routine & Breakfast", start: [17,30], end: [18,30], gem: "🌅", motivation: "Rise and shine — your evening adventure begins! Every small step forward is progress. 🌅" },
+  { name: "Programming Study Session 1 — Python Fundamentals", start: [18,30], end: [20,30], gem: "💻", motivation: "You're building the foundation for your IT career. Every line of code matters! 💻" },
+  { name: "Dinner Break", start: [20,30], end: [21,30], gem: "🍱", motivation: "Fuel your body and mind. You deserve this rest! 🍱" },
+  { name: "Programming Study Session 2 — Practice Problems", start: [21,30], end: [23,30], gem: "🧠", motivation: "Struggling with a problem? That's your brain growing stronger! 🧠" },
+  { name: "Chores & Household Responsibilities", start: [23,30], end: [24,30], gem: "🏠", motivation: "A clean space = a clear mind. You're investing in yourself! 🏠" },
+  { name: "Free Time: Gaming / Anime / Manga", start: [24,30], end: [26,30], gem: "🎮", motivation: "Enjoy your hobbies guilt-free! Balance is key to sustainable growth. 🎮📺📚" },
+  { name: "Late Snack & Family / Social Time", start: [26,30], end: [27,30], gem: "👨‍👩‍👧‍👦", motivation: "Connect with loved ones. Their support is your strength! 👨‍👩‍👧‍👦" },
+  { name: "Evening Study / Reading Session", start: [27,30], end: [29,0], gem: "📖", motivation: "Ending the night with learning? You're already ahead of the curve! 📖" },
+  { name: "Leisure: Gaming / Anime / Novel Reading", start: [29,0], end: [30,30], gem: "✨", motivation: "Wind down and recharge. Tomorrow is another opportunity to shine! ✨" },
+  { name: "Night Routine & Sleep Prep", start: [30,30], end: [31,30], gem: "😴", motivation: "Brush up, wind down, and get cozy. Rest is part of the grind! 🌙" },
+  { name: "Sleep", start: [31,30], end: [40,30], gem: "🌙", motivation: "9 hours of deep, restorative sleep. Your brain is consolidating everything you learned — this is growth! 💫", isSleep: true, sleepHours: 9 },
+];
+
+// Weekend: starts 5:30 PM, sleep 3:00 AM – 12:00 PM (9 hrs)
+const weekendTasks = [
+  { name: "Wake Up & Relaxed Evening Start", start: [17,30], end: [18,30], gem: "🛏️", motivation: "Weekends are for recharging! You've earned this extra rest. 🛏️" },
+  { name: "Dinner & Personal Time", start: [18,30], end: [19,30], gem: "☕", motivation: "Slow starts build resilience. Enjoy every moment! ☕" },
+  { name: "Programming Project Time — Build Something Fun!", start: [19,30], end: [22,0], gem: "🚀", motivation: "Create something YOU want! Passion projects become portfolio gold. 🚀" },
+  { name: "Chores & Room Organization", start: [22,0], end: [23,0], gem: "🧹", motivation: "Organizing your space = organizing your thoughts. Stay sharp! 🧹" },
+  { name: "Extended Hobby Time: Gaming / Anime / Manga", start: [23,0], end: [26,0], gem: "🎉", motivation: "Weekends = maximum fun time! Enjoy your passions to the fullest! 🎉" },
+  { name: "Late Night Snack", start: [26,0], end: [27,0], gem: "🍽️", motivation: "Refuel and reflect on a well-balanced weekend day! 🍽️" },
+  { name: "Optional: Light Study or Review", start: [27,0], end: [28,0], gem: "💡", motivation: "Feeling motivated? Great! If not, rest is equally valuable. 💡" },
+  { name: "Free Time: Your Choice!", start: [28,0], end: [29,30], gem: "🌟", motivation: "Complete freedom! Do what makes you happiest right now. 🌟" },
+  { name: "Night Routine & Sleep Prep", start: [29,30], end: [30,30], gem: "😴", motivation: "Brush up, wind down, and get cozy. A great weekend deserves a great rest! 🌙" },
+  { name: "Sleep", start: [30,30], end: [39,30], gem: "🌙", motivation: "9 beautiful hours of sleep. Sweet dreams, future IT professional — you absolutely deserve this! 💜", isSleep: true, sleepHours: 9 },
+];
+
+let currentTab = 'weekday';
+let completedTasks = new Set();
+let audioCtx = null;
+let alarmNodes = [];
+let alarmLooping = false;
+let interacted = false;
+
+// --- WAKE LOCK SYSTEM START ---
+let wakeLock = null;
+
+async function requestWakeLock() {
+    if ('wakeLock' in navigator) {
+        try {
+            wakeLock = await navigator.wakeLock.request('screen');
+            console.log('✨ Wake Lock active! Screen will stay on.');
+        } catch (err) {
+            console.error('Wake Lock failed:', err);
+        }
+    }
+}
+
+// Re-request if you minimize the browser and open it again
+document.addEventListener('visibilitychange', () => {
+    if (wakeLock !== null && document.visibilityState === 'visible') {
+        requestWakeLock();
+    }
+});
+
+// Trigger the wake lock AND the alarm permission on your first tap
+document.addEventListener('click', () => { 
+    interacted = true; 
+    requestWakeLock();
+}, { once: true });
+// --- WAKE LOCK SYSTEM END ---
+
+function getCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function playLoopingAlarm() {
+  stopAlarm(); 
+  alarmLooping = true;
+  loopChime();
+}
+
+function loopChime() {
+  if (!alarmLooping) return;
+  try {
+    const ctx = getCtx();
+    const notes = [523.25, 659.25, 783.99, 1046.5];
+    const totalDur = notes.length * 0.22 + 0.7;
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.22);
+      gain.gain.setValueAtTime(0, ctx.currentTime + i * 0.22);
+      gain.gain.linearRampToValueAtTime(0.6, ctx.currentTime + i * 0.22 + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.22 + 0.8);
+      osc.start(ctx.currentTime + i * 0.22);
+      osc.stop(ctx.currentTime + i * 0.22 + 0.85);
+      alarmNodes.push(osc);
+    });
+    setTimeout(() => { if (alarmLooping) loopChime(); }, (totalDur + 0.8) * 1000);
+  } catch(e) {}
+}
+
+function stopAlarm() {
+  alarmLooping = false;
+  alarmNodes.forEach(n => { try { n.stop(); } catch(e) {} });
+  alarmNodes = [];
+}
+
+function dismissAlarm() {
+  stopAlarm();
+  document.getElementById('alarm-banner').classList.remove('visible');
+}
+
+function triggerAlarm(task) {
+  document.getElementById('alarm-task-name').textContent = task.gem + '  ' + task.name + ' is done!';
+  document.getElementById('alarm-banner').classList.add('visible');
+  playLoopingAlarm();
+  if ('Notification' in window && Notification.permission === 'granted') {
+    // use service worker notification so it works when minimized
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.ready.then(reg => {
+        reg.showNotification('⏰ ' + task.name + ' is done!', {
+          body: task.motivation.substring(0, 80),
+          icon: 'https://em-content.zobj.net/source/apple/354/crystal-ball_1f52e.png',
+          badge: 'https://em-content.zobj.net/source/apple/354/crystal-ball_1f52e.png',
+          vibrate: [200, 100, 200],
+          tag: 'schedule-alarm'
+        });
+      });
+    } else {
+      new Notification('⏰ ' + task.name + ' is done!', {
+        body: task.motivation,
+        icon: 'https://em-content.zobj.net/source/apple/354/crystal-ball_1f52e.png'
+      });
+    }
+  } else {
+    showMobileToast('⏰ ' + task.name + ' is done!', task.motivation.substring(0, 60) + '…');
+  }
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('btn-weekday').classList.toggle('active', tab === 'weekday');
+  document.getElementById('btn-weekend').classList.toggle('active', tab === 'weekend');
+  render();
+}
+
+function toMins(h, m) { return h * 60 + m; }
+function nowMins() {
+  const n = new Date();
+  let h = n.getHours(), m = n.getMinutes(), s = n.getSeconds();
+  let total = h * 60 + m + s / 60;
+  // Schedule starts at 17:30. If current time is before 17:30 (i.e. morning/early afternoon),
+  // it's part of the "next-day" continuation — represent as 24h+.
+  if (h < 17 || (h === 17 && m < 30)) total += 1440;
+  return total;
+}
+
+function isActive(task, now) {
+  const s = toMins(...task.start), e = toMins(...task.end);
+  return now >= s && now < e;
+}
+function isDone(task, now) {
+  return now >= toMins(...task.end);
+}
+function getProgress(task, now) {
+  const s = toMins(...task.start), e = toMins(...task.end);
+  const dur = e - s;
+  const elapsed = Math.max(0, now - s);
+  return Math.min(1, elapsed / dur);
+}
+function getRemaining(task, now) {
+  const e = toMins(...task.end);
+  const rem = Math.max(0, e - now);
+  const h = Math.floor(rem / 60), m = Math.floor(rem % 60);
+  return h > 0 ? h + "h " + m + "m left" : m + "m left";
+}
+function fmt12(h, m) {
+  const hh2 = h % 24;
+  const ampm = hh2 < 12 ? 'AM' : 'PM';
+  const hh = hh2 % 12 === 0 ? 12 : hh2 % 12;
+  return hh + ":" + String(m).padStart(2,'0') + " " + ampm;
+}
+
+function checkCompletions(tasks, now) {
+  tasks.forEach(task => {
+    if (task.isSleep) return;
+    const key = currentTab + '_' + task.name;
+    const done = isDone(task, now);
+    if (done && !completedTasks.has(key)) {
+      completedTasks.add(key);
+      if (interacted) triggerAlarm(task);
+    }
+    if (!done) completedTasks.delete(key);
+  });
+}
+
+function render() {
+  const tasks = currentTab === 'weekday' ? weekdayTasks : weekendTasks;
+  const now = nowMins();
+  checkCompletions(tasks, now);
+  const list = document.getElementById('schedule-list');
+  list.innerHTML = '';
+
+  tasks.forEach(task => {
+    const active = isActive(task, now), done = isDone(task, now);
+    const pct = active ? getProgress(task, now) : (done ? 1 : 0);
+    const card = document.createElement('div');
+    const sleepClass = task.isSleep ? ' sleep-card' : '';
+    card.className = 'task-card' + sleepClass + (active ? ' active' : '') + (done ? ' done' : '');
+    const showBar = active || done;
+    const sleepBadge = task.isSleep ? `<span class="sleep-badge">${task.sleepHours}h sleep</span>` : '';
+    card.innerHTML = `
+      <div class="task-top">
+        <div class="task-gem">${task.gem}</div>
+        <div class="task-info">
+          <div class="task-name">${task.name}${sleepBadge}</div>
+          <div class="task-time">${fmt12(...task.start)} – ${fmt12(...task.end)}</div>
+        </div>
+        <div class="active-badge">✦ Active Now</div>
+      </div>
+      ${showBar ? `<div class="progress-wrap">
+        <div class="progress-track"><div class="progress-fill${done?' full':''}" style="width:${Math.round(pct*100)}%"></div></div>
+        <div class="progress-text">${active ? getRemaining(task, now) : 'done ✓'}</div>
+      </div>` : ''}
+      <div class="motivation">${task.motivation}</div>
+    `;
+    list.appendChild(card);
+  });
+}
+
+function updateClock() {
+  const n = new Date();
+  let h = n.getHours(), m = n.getMinutes(), s = n.getSeconds();
+  const ampm = h < 12 ? 'AM' : 'PM';
+  h = h % 12 === 0 ? 12 : h % 12;
+  document.getElementById('clock').textContent = h + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0') + ' ' + ampm;
+}
+
+function createStars() {
+  const sf = document.getElementById('starfield');
+  for (let i = 0; i < 80; i++) {
+    const star = document.createElement('div');
+    star.className = 'star';
+    const size = Math.random() * 2.5 + 0.5;
+    star.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;width:${size}px;height:${size}px;--d:${2+Math.random()*4}s;--delay:${Math.random()*4}s;opacity:${Math.random()*0.5+0.1};`;
+    sf.appendChild(star);
+  }
+  for (let i = 0; i < 5; i++) {
+    const b = document.createElement('div');
+    b.className = 'butterfly';
+    b.textContent = '🦋';
+    b.style.cssText = `left:${10+Math.random()*80}%;top:${10+Math.random()*80}%;--fd:${6+Math.random()*6}s;--fdelay:${Math.random()*4}s;opacity:${0.2+Math.random()*0.3};`;
+    document.body.appendChild(b);
+  }
+}
+
+createStars(); render(); updateClock();
+
+// Ask for notification permission — with mobile fallback
+function requestNotifPermission() {
+  if ('Notification' in window) {
+    Notification.requestPermission().then(perm => {
+      if (perm === 'granted') console.log('✦ Notifications granted!');
+    });
+  }
+}
+// On mobile, permission must be triggered by a user gesture
+document.addEventListener('click', requestNotifPermission, { once: true });
+requestNotifPermission();
+
+// Mobile fallback: in-page toast when system notification isn't available
+function showMobileToast(title, body) {
+  let toast = document.getElementById('mobile-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'mobile-toast';
+    toast.style.cssText = `
+      position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(100px);
+      background:linear-gradient(135deg,#1a0a2e,#2a1040);
+      border:1px solid rgba(240,192,96,0.6);border-radius:16px;
+      padding:0.85rem 1.2rem;z-index:9999;
+      font-family:'Cinzel',serif;font-size:0.75rem;color:#f0c060;
+      box-shadow:0 4px 30px rgba(212,160,255,0.3);
+      transition:transform 0.4s cubic-bezier(0.34,1.2,0.64,1);
+      text-align:center;max-width:90vw;letter-spacing:0.05em;
+    `;
+    document.body.appendChild(toast);
+  }
+  toast.innerHTML = '🔔 ' + title + '<br><span style="font-size:0.65rem;color:#a080c8;font-family:Raleway,sans-serif;">' + body + '</span>';
+  toast.style.transform = 'translateX(-50%) translateY(0)';
+  clearTimeout(toast._to);
+  toast._to = setTimeout(() => { toast.style.transform = 'translateX(-50%) translateY(100px)'; }, 5000);
+}
+
+// Register Service Worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js')
+    .then(reg => console.log('✦ SW registered!', reg))
+    .catch(err => console.log('SW failed:', err));
+}
+
+// Web Worker ticker so the timer keeps running in the background
+const workerBlob = new Blob([`
+  setInterval(() => self.postMessage('tick'), 1000);
+`], { type: 'application/javascript' });
+const timerWorker = new Worker(URL.createObjectURL(workerBlob));
+let tickCount = 0;
+timerWorker.onmessage = () => {
+  updateClock();
+  tickCount++;
+  if (tickCount % 10 === 0) render(); // check tasks every 10 seconds
+};
+</script>
+</body>
+</html>
